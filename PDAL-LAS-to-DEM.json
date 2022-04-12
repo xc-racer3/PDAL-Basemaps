@@ -1,0 +1,18 @@
+[
+        "*.la*",
+    {
+        "type": "filters.range",
+        "limits": "Classification[2:2]",
+        "tag": "Ground_Points"
+    },
+    {
+        "type": "writers.gdal",
+        "filename": "DEM.tif",
+        "gdalopts": "tiled=yes,     compress=deflate",
+        "inputs": [ "Ground_Points" ],
+        "nodata": -9999,
+        "output_type": "idw",
+        "resolution": 1,
+        "window_size": 3
+    }
+]

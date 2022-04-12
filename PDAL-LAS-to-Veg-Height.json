@@ -1,0 +1,22 @@
+[
+        "*.la*",
+    {
+        "type": "filters.hag_nn",
+        "tag": "HAG"
+    },
+    {
+    	"type": "filters.ferry",
+    	"dimensions": "HeightAboveGround=>Z",
+    	"tag": "HAG_is_Z"
+    },
+    {
+        "type": "writers.gdal",
+        "filename": "Veg-Height.tif",
+        "gdalopts": "tiled=yes,     compress=deflate",
+        "inputs": [ "HAG_is_Z" ],
+        "nodata": -9999,
+        "output_type": "idw",
+        "resolution": 1,
+        "window_size": 6
+    }
+]
