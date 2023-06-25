@@ -5,38 +5,51 @@
 
 # Assumes that this script, both the PDAL JSON files, both the color_xxxxxxxxx.txt, pullauta (and pullauta.ini) and the LiDAR files are in the same DIRECTORY
 
-#Select Program to Use to Process
-echo Select processing programs to run - options are PDAL, KARTTA, or BOTH.
+
+# ------- PROGRAM SELECTION --------
+
+echo Select processing programs to run - options are PDAL, KARTTA, or ALL.
 read PROG
-if [ $PROG = PDAL ] || [ $PROG = BOTH ]
+if [ "$PROG" = PDAL ] || [ "$PROG" = ALL ]
 then
-	#Make PDAL Output Directory
-	DIRECTORY=PDAL_Output
-	mkdir $DIRECTORY
 	#PDAL INPUT OPTIONS
-	echo Select PDAL options - options are GROUND, VEG, or BOTH. 
+	echo Select PDAL options - options are GROUND, VEG, INTENSE or ALL. 
 	read PDALOPTS
-	if [ $PDALOPTS = "GROUND" ] || [ $PDALOPTS = "BOTH" ]
+	if [ "$PDALOPTS" = "GROUND" ] || [ "$PDALOPTS" = "ALL" ]
 	then
 		PDALGROUND=YES
 		echo Select basemap style - options are 5, 2-5, or 2.
 		read STYLE
 		echo Style set to $STYLE
-	fi 
-	if [ $PDALOPTS = "VEG" ] || [ $PDALOPTS = "BOTH" ]
+	fi
+	
+	#PDAL Intensity
+	if [ "$PDALOPTS" = "INTENSE" ] || [ "$PDALOPTS" = "ALL" ]
+	then
+		PDALINT=YES 
+	fi
+	
+	#PDAL Vegetation Height
+	if [ "$PDALOPTS" = "VEG" ] || [ "$PDALOPTS" = "ALL" ]
 	then
 		PDALVEG=YES
 	fi
-	
 fi
 
-if [ $PROG = "KARTTA" ] || [ $PROG = "BOTH" ]
+if [ "$PROG" = "KARTTA" ] || [ "$PROG" = "ALL" ]
 then
 	KARTTA=YES
 fi
 
+# -------- ACTUAL DATA PROCESSING --------
+if [ "$PROG" = PDAL ] || [ "$PROG" = ALL ]
+then
+	#Make PDAL Output Directory
+	DIRECTORY=PDAL_Output
+	mkdir $DIRECTORY
+fi
 #PDAL Ground Processing
-if [ $PDALGROUND = "YES" ]
+if [ "$PDALGROUND" = "YES" ]
 then
 	SECONDS=0
 	echo Starting PDAL Processing.  Generating DEM.
@@ -52,7 +65,7 @@ then
 	echo Done processing GDAL Layers.  Processing Contours.
 
 	#Generating Contours
-	if [ $STYLE = "5" ]
+	if [ "$STYLE" = "5" ]
 	then
 		gdal_contour -b 1 -a elev -i 1 DEM.tif 1m_contours_int.shp
 		echo 1m Contours Generated.  Formatting to 25m Index Contour, 5m Contour, and 1m Formline
@@ -62,7 +75,7 @@ then
 		rm 1m_contours_int.*
 	fi
 
-	if [ $STYLE = "2" ]
+	if [ "$STYLE" = "2" ]
 	then
 		gdal_contour -b 1 -a elev -i 0.5 DEM.tif 0-5m_contours_int.shp
 		echo 1m Contours Generated.  Formatting to 10m Index Contour, 2m Contour, and 0.5m Formline
@@ -71,7 +84,7 @@ then
 		ogr2ogr -where 'elev %10 = 0' $DIRECTORY/10m_contours.shp 0-5m_contours_int.shp
 		rm 0-5m_contours_int.*
 	fi
-	if [ $STYLE = "2-5" ]
+	if [ "$STYLE" = "2-5" ]
 	then
 		gdal_contour -b 1 -a elev -i 0.5 DEM.tif 0-5m_contours_int.shp
 		echo 1m Contours Generated.  Formatting to 10m Index Contour, 2m Contour, and 0.5m Formline
@@ -88,8 +101,24 @@ then
 	echo PDAL Ground took "$(($PDALGND_TIME / 60)) minutes and $(($PDALGND_TIME % 60)) seconds."
 fi
 
-#CANOPY HEIGHT MODEL PDAL VEG
-if [ $PDALVEG = "YES" ]
+
+#PDAL INTENSITY MAP
+if [ "$PDALINT" = "YES" ]
+then
+	SECONDS=0
+	echo Starting PDAL Intensity mapping.
+	pdal pipeline PDAL-LAS-to-Intensity.json
+	gdaldem color-relief -p -b 1 Temp_Intensity.tif color_intensity.txt $DIRECTORY/Intensity.tiff
+	PDALINT_TIME=$SECONDS	
+	rm Temp_Intensity.tif
+	rm Temp_Intensity.tif.aux.xml
+	echo PDAL Intensity map done.
+	echo PDAL Intensity took "$(($PDALINT_TIME / 60)) minutes and $(($PDALINT_TIME % 60)) seconds."
+fi
+
+
+#PDAL CANOPY HEIGHT MODEL
+if [ "$PDALVEG" = "YES" ]
 then	
 	SECONDS=0
 	echo Started PDAL Processing.  Calculating Height Above Ground
@@ -103,9 +132,10 @@ then
 	echo Canopy Height Model Done --- 0m = Yellow - 1m = Red 2m = Green - 20m = Blue - 50m = Black
 fi
 
-#KARTTAPULLAUTIN Processing
 
-if [ $KARTTA = "YES" ]
+#KARTTAPULLAUTIN Processing 
+
+if [ "$KARTTA" = "YES" ]
 then
 	SECONDS=0
 	lasmerge -i *.laz -o all_merged.laz
@@ -113,6 +143,5 @@ then
 	KP_TIME=$SECONDS
 	echo Rusty Karttapullautin took "$(($KP_TIME / 60)) minutes and $(($KP_TIME % 60)) seconds."
 fi
-
 
 echo All done.
