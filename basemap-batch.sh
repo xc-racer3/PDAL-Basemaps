@@ -109,7 +109,7 @@ then
 	echo Starting PDAL Intensity mapping.
 	pdal pipeline PDAL-LAS-to-Intensity.json
 	gdaldem color-relief -p -b 1 Temp_Intensity_Intermed.tif color_intensity.txt Temp_Intensity_Uncompress.tiff
-	gdal_translate -b 1 -b 2 -b 3 -co COMPRESS=JPEG -co PHOTOMETRIC=YCBCR -co TILED=YES intensity.tiff Temp_Intensity_Uncompress.tiff $DIRECTORY/Intensity.tiff
+	gdal_translate -b 1 -b 2 -b 3 -co COMPRESS=JPEG -co PHOTOMETRIC=YCBCR -co TILED=YES Temp_Intensity_Uncompress.tiff $DIRECTORY/Intensity.tiff
 	PDALINT_TIME=$SECONDS	
 	rm Temp_Intensity_Intermed.tif
 	rm Temp_Intensity_Intermed.tif.aux.xml
