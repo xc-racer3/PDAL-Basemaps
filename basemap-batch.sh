@@ -108,14 +108,16 @@ then
 	SECONDS=0
 	echo Starting PDAL Intensity mapping.
 	pdal pipeline PDAL-LAS-to-Intensity.json
-	gdaldem color-relief -p -b 1 Temp_Intensity.tif color_intensity.txt $DIRECTORY/Intensity.tiff
+	gdaldem color-relief -p -b 1 Temp_Intensity_Intermed.tif color_intensity.txt Temp_Intensity_Uncompress.tiff
+	gdal_translate -b 1 -b 2 -b 3 -co COMPRESS=JPEG -co PHOTOMETRIC=YCBCR -co TILED=YES intensity.tiff Temp_Intensity_Uncompress.tiff $DIRECTORY/Intensity.tiff
 	PDALINT_TIME=$SECONDS	
-	rm Temp_Intensity.tif
-	rm Temp_Intensity.tif.aux.xml
+	rm Temp_Intensity_Intermed.tif
+	rm Temp_Intensity_Intermed.tif.aux.xml
+	rm Temp_Intensity_Uncompress.tiff
+	rm Temp_Intensity_Uncompress.tiff.aux.xml
 	echo PDAL Intensity map done.
 	echo PDAL Intensity took "$(($PDALINT_TIME / 60)) minutes and $(($PDALINT_TIME % 60)) seconds."
 fi
-
 
 #PDAL CANOPY HEIGHT MODEL
 if [ "$PDALVEG" = "YES" ]
@@ -140,6 +142,7 @@ then
 	SECONDS=0
 	lasmerge -i *.laz -o all_merged.laz
 	perl pullauta all_merged.laz
+	rm all_merged.laz
 	KP_TIME=$SECONDS
 	echo Rusty Karttapullautin took "$(($KP_TIME / 60)) minutes and $(($KP_TIME % 60)) seconds."
 fi

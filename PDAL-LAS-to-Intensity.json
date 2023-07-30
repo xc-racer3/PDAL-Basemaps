@@ -2,8 +2,7 @@
         "*.la*",
     {
         "type": "writers.gdal",
-        "filename": "Temp_Intensity.tif",
-        "gdalopts": "tiled=yes, compress=deflate",
+        "filename": "Temp_Intensity_Intermed.tif",
         "nodata": -9999,
         "dimension": "Intensity",
         "output_type": "idw",
