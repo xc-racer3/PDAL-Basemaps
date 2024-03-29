@@ -48,6 +48,7 @@ then
 	DIRECTORY=PDAL_Output
 	mkdir $DIRECTORY
 fi
+
 #PDAL Ground Processing
 if [ "$PDALGROUND" = "YES" ]
 then
@@ -56,46 +57,44 @@ then
 	pdal pipeline PDAL-LAS-to-DEM.json
 	#GDAL Processing - Ground Points Only
 	echo Done PDAL and DEM processing, starting GDAL - Generating hillshade.
-	gdaldem hillshade DEM.tif $DIRECTORY/hillshade.tiff
+	gdaldem hillshade -co COMPRESS=JPEG -co TILED=YES DEM.tif $DIRECTORY/hillshade.tiff
 	echo Done processing hillshade, generating intermediate-slope map.
-	gdaldem slope -p -b 1 DEM.tif slope.tiff
+	gdaldem slope -co TILED=YES -p -b 1 DEM.tif slope.tiff
 	echo Done processing intermediate-slope map, generating slopeshade.
-	gdaldem color-relief slope.tiff color_slope.txt $DIRECTORY/slopeshade.tiff
+	gdaldem color-relief -co COMPRESS=JPEG -co TILED=YES slope.tiff color_slope.txt $DIRECTORY/slopeshade.tiff
 	rm slope.tiff
 	echo Done processing GDAL Layers.  Processing Contours.
 
 	#Generating Contours
+	gdal_contour -b 1 -a elev -i 0.5 DEM.tif 0-5m_contours_int.shp
 	if [ "$STYLE" = "5" ]
 	then
-		gdal_contour -b 1 -a elev -i 1 DEM.tif 1m_contours_int.shp
-		echo 1m Contours Generated.  Formatting to 25m Index Contour, 5m Contour, and 1m Formline
-		ogr2ogr -where 'elev %1 = 0 AND elev %5 != 0' $DIRECTORY/1m_contours.shp 1m_contours_int.shp
-		ogr2ogr -where 'elev %5 = 0 AND elev %25 != 0' $DIRECTORY/5m_contours.shp 1m_contours_int.shp
-		ogr2ogr -where 'elev %25 = 0' $DIRECTORY/25m_contours.shp 1m_contours_int.shp
-		rm 1m_contours_int.*
+		echo 0.5m Contours Generated.  Formatting to 25m Index Contour, 5m Contour, 1m Formline, and 0.5m helper line
+		ogr2ogr -where "elev %1 != 0" $DIRECTORY/0-5m_contours.shp 0-5m_contours_int.shp
+		ogr2ogr -where 'elev %1 = 0 AND elev %5 != 0' $DIRECTORY/1m_contours.shp 0-5m_contours_int.shp
+		ogr2ogr -where 'elev %5 = 0 AND elev %25 != 0' $DIRECTORY/5m_contours.shp 0-5m_contours_int.shp
+		ogr2ogr -where 'elev %25 = 0' $DIRECTORY/25m_contours.shp 0-5m_contours_int.shp
 	fi
-
+	
 	if [ "$STYLE" = "2" ]
 	then
-		gdal_contour -b 1 -a elev -i 0.5 DEM.tif 0-5m_contours_int.shp
-		echo 1m Contours Generated.  Formatting to 10m Index Contour, 2m Contour, and 0.5m Formline
+		echo 0.5m Contours Generated.  Formatting to 10m Index Contour, 2m Contour, and 0.5m Formline
 		ogr2ogr -where "elev %2 != 0" $DIRECTORY/0-5m_contours.shp 0-5m_contours_int.shp
 		ogr2ogr -where 'elev %2 = 0 AND elev %10 != 0' $DIRECTORY/2m_contours.shp 0-5m_contours_int.shp
 		ogr2ogr -where 'elev %10 = 0' $DIRECTORY/10m_contours.shp 0-5m_contours_int.shp
-		rm 0-5m_contours_int.*
 	fi
+	
 	if [ "$STYLE" = "2-5" ]
 	then
-		gdal_contour -b 1 -a elev -i 0.5 DEM.tif 0-5m_contours_int.shp
-		echo 1m Contours Generated.  Formatting to 10m Index Contour, 2m Contour, and 0.5m Formline
+		echo 0.5m Contours Generated.  Formatting to 10m Index Contour, 2m Contour, and 0.5m Formline
 		ogr2ogr -where "elev - 2.5 * CAST((elev / 2.5) as Integer) != 0" $DIRECTORY/0-5m_contours.shp 0-5m_contours_int.shp
 		ogr2ogr -where "elev - 2.5 * CAST((elev / 2.5) as Integer) = 0 AND 12.5 * CAST((elev / 12.5) as Integer) != 0" $DIRECTORY/2-5m_contours.shp 0-5m_contours_int.shp
 		ogr2ogr -where 'elev - 12.5 * CAST((elev / 12.5) as Integer) = 0' $DIRECTORY/12-5m_contours.shp 0-5m_contours_int.shp
-		rm 0-5m_contours_int.*
 	fi
-
+	
 	cp DEM.tif $DIRECTORY/
 	rm DEM.tif
+	rm 0-5m_contours_int.*
 	PDALGND_TIME=$SECONDS
 	echo Contours Formatted.  Done ground-based basemaps.  
 	echo PDAL Ground took "$(($PDALGND_TIME / 60)) minutes and $(($PDALGND_TIME % 60)) seconds."
@@ -127,7 +126,9 @@ then
 	pdal pipeline PDAL-LAS-to-Veg-Height.json
 	wait
 	echo Finished HAG Calculations.  GDAL processing Canopy Height Model Started
-	gdaldem color-relief Veg-Height.tif color_veg-height.txt $DIRECTORY/Canopy-Height.tif
+	gdaldem color-relief Veg-Height.tif color_veg-height.txt Temp_Canopy_Height_Uncompress.tif
+	gdal_translate -b 1 -b 2 -b 3 -co COMPRESS=JPEG -co PHOTOMETRIC=YCBCR -co TILED=YES Temp_Canopy_Height_Uncompress.tif $DIRECTORY/Canopy-Height.tiff
+	rm Temp_Canopy_Height_Uncompress.tif
 	rm Veg-Height.tif
 	PDALVEG_TIME=$SECONDS
 	echo PDAL Veg took "$(($PDALVEG_TIME / 60)) minutes and $(($PDALVEG_TIME % 60)) seconds."
@@ -139,6 +140,7 @@ fi
 
 if [ "$KARTTA" = "YES" ]
 then
+	echo Started Karttapullautin processing.
 	SECONDS=0
 	lasmerge -i *.laz -o all_merged.laz
 	perl pullauta all_merged.laz

@@ -3,10 +3,13 @@
     {
         "type": "writers.gdal",
         "filename": "Temp_Intensity_Intermed.tif",
+        "gdalopts": "tiled=yes, compress=deflate",
         "nodata": -9999,
         "dimension": "Intensity",
         "output_type": "idw",
-        "resolution": 0.25,
-        "window_size": 3
+        "resolution": 0.2,
+        "radius": 2,
+        "power": 2,
+        "window_size": 1
     }
 ]

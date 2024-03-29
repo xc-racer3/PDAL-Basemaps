@@ -12,7 +12,9 @@
         "inputs": [ "Ground_Points" ],
         "nodata": -9999,
         "output_type": "idw",
-        "resolution": 1,
-        "window_size": 3
+        "resolution": 0.2,
+        "radius": 2,
+        "power": 2,
+        "window_size": 1
     }
 ]
